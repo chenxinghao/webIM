@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+	"webIM/services"
 
 	"github.com/astaxie/beego"
 	"github.com/gorilla/websocket"
@@ -55,26 +56,33 @@ func (this *WebSocketController) Join() {
 	ws, err := websocket.Upgrade(this.Ctx.ResponseWriter, this.Ctx.Request, nil, 1024, 1024)
 	if _, ok := err.(websocket.HandshakeError); ok {
 		http.Error(this.Ctx.ResponseWriter, "Not a websocket handshake", 400)
+
 		return
 	} else if err != nil {
 		beego.Error("Cannot setup WebSocket connection:", err)
 		return
 	}
 
+	chatRoom := services.SchedulerService.FindChatRoom("defaultARoom")
+	chatRoom.Join(uname, ws)
+	defer chatRoom.Leave(uname)
+
 	// Join chat room.
-	Join(uname, ws)
-	defer Leave(uname)
+	//Join(uname, ws)
+	//defer Leave(uname)
+
 	time.Sleep(time.Duration(2) * time.Second)
 
-	for _, event := range models.GetAllMessageEvents() {
-		data, err := json.Marshal(event)
+	for event := chatRoom.GetArchive().Front(); event != nil; event = event.Next() {
+		ev := event.Value.(models.Event)
+		data, err := json.Marshal(ev)
 		if err != nil {
 			beego.Error("Fail to marshal event:", err)
 			return
 		}
 		if ws.WriteMessage(websocket.TextMessage, data) != nil {
 			// User disconnected.
-			unsubscribe <- uname
+			chatRoom.Leave(uname)
 		}
 	}
 
@@ -82,28 +90,9 @@ func (this *WebSocketController) Join() {
 	for {
 		_, p, err := ws.ReadMessage()
 		if err != nil {
+			beego.Info("test!!!!err")
 			return
 		}
-		publish <- newEvent(models.EVENT_MESSAGE, uname, string(p))
-	}
-}
-
-// broadcastWebSocket broadcasts messages to WebSocket users.
-func broadcastWebSocket(event models.Event) {
-	data, err := json.Marshal(event)
-	if err != nil {
-		beego.Error("Fail to marshal event:", err)
-		return
-	}
-
-	for sub := subscribers.Front(); sub != nil; sub = sub.Next() {
-		// Immediately send event to WebSocket users.
-		ws := sub.Value.(Subscriber).Conn
-		if ws != nil {
-			if ws.WriteMessage(websocket.TextMessage, data) != nil {
-				// User disconnected.
-				unsubscribe <- sub.Value.(Subscriber).Name
-			}
-		}
+		chatRoom.Send(chatRoom.NewEvent(models.EVENT_MESSAGE, uname, string(p)))
 	}
 }

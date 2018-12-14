@@ -34,7 +34,9 @@ $(document).ready(function () {
 
             break;
         }
-
+        if ($('#chatbox li').length >20) {
+            $('#chatbox li').last().remove();
+        }
         $('#chatbox li').first().before(li);
     };
 
@@ -48,5 +50,10 @@ $(document).ready(function () {
 
     $('#sendbtn').click(function () {
         postConecnt();
+    });
+    $('#sendbox').keydown(function(event){
+        if(event.keyCode ==13){
+            postConecnt();
+        }
     });
 });

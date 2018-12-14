@@ -20,31 +20,12 @@ import (
 
 type EventType int
 
-const (
-	EVENT_JOIN = iota
-	EVENT_LEAVE
-	EVENT_MESSAGE
-)
-
-type Event struct {
-	Type      EventType // JOIN, LEAVE, MESSAGE
-	User      string
-	Timestamp int // Unix timestamp (secs)
-	Content   string
-}
-
 const archiveSize = 20
 
 // Event archives.
 var archive = list.New()
 
 // NewArchive saves new event to archive list.
-func NewArchive(event Event) {
-	if archive.Len() >= archiveSize {
-		archive.Remove(archive.Front())
-	}
-	archive.PushBack(event)
-}
 
 // GetEvents returns all events after lastReceived.
 func GetEvents(lastReceived int) []Event {
