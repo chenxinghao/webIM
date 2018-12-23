@@ -3,6 +3,40 @@
 <title>{{i18n .Lang "websocket_chatroom"}} - {{i18n .Lang "app_intro"}}</title>
 {{end}}
 {{define "body"}}
+<nav class="navbar navbar-default">
+    <div class="container-fluid">
+        <div class="navbar-header">
+            <p id="room_name"class="navbar-brand">大厅</p>
+        </div>
+        {{/*<div class="navbar-header">*/}}
+            {{/*<button  type="button" class="btn btn-default navbar-btn">+</button>*/}}
+        {{/*</div>*/}}
+
+
+        <div class="navbar-form navbar-left">
+            <div class="form-group">
+                <input id="room_name_input" class="form-control" type="text" placeholder="Search">
+            </div>
+            <button id="change_room" class="btn btn-default" type="button">+</button>
+        </div>
+
+
+        {{/*<div  class="form-group">*/}}
+                {{/*<input id="room_name_input" type="text" class="form-control" placeholder="Search">*/}}
+        {{/*</div>*/}}
+        {{/*<div class="navbar-header">*/}}
+                {{/*<button  id="change_room" type="button" class="btn btn-default navbar-btn">+</button>*/}}
+        {{/*</div>*/}}
+
+
+
+        <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-5">
+            <p id="members" class="navbar-text navbar-right">在线人数：0</p>
+        </div>
+
+
+    </div>
+</nav>
 <div class="container">
     <h3>{{i18n .Lang "username"}}: <span id="uname">{{.UserName}}</span></h3>
     <h4>{{i18n .Lang "send_box"}}:</h4>
@@ -10,7 +44,7 @@
         <div class="col-md-6 form-group">
             <input id="sendbox" type="text" class="form-control" onkeydown="if(event.keyCode==13)return false;" required>
         </div>
-        <button id="sendbtn" type="button" class="btn btn-default">{{i18n .Lang "Send"}}</button>
+        {{/*<button id="sendbtn" type="button" class="btn btn-default">{{i18n .Lang "Send"}}</button>*/}}
     </form>
 </div>
 

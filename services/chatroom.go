@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/astaxie/beego"
 	"github.com/gorilla/websocket"
+	"strconv"
 	"time"
 )
 
@@ -25,10 +26,12 @@ type ChatRoom struct {
 	send chan models.Event
 
 	subscribers *list.List
+
+	interrupt chan bool
 }
 
 func (this *ChatRoom) NewEvent(ep models.EventType, user, msg string) models.Event {
-	return models.Event{ep, user, int(time.Now().Unix()), msg}
+	return models.Event{ep, user, int(time.Now().Unix()), msg, nil}
 }
 
 func (this *ChatRoom) Join(user string, ws *websocket.Conn) {
@@ -37,6 +40,9 @@ func (this *ChatRoom) Join(user string, ws *websocket.Conn) {
 
 func (this *ChatRoom) Leave(user string) {
 	this.unsubscribe <- user
+}
+func (this *ChatRoom) Interrupt() {
+	this.interrupt <- true
 }
 
 func (this *ChatRoom) Create() {
@@ -49,9 +55,15 @@ func (this *ChatRoom) Create() {
 	this.send = make(chan models.Event, 10)
 
 	this.subscribers = list.New()
+	this.interrupt = make(chan bool, 1)
 }
 
 func (this *ChatRoom) broadcastWebSocket(event models.Event) {
+	message := &models.Message{}
+	message.FromChatRoom = this.Name
+	beego.Info(this.Name)
+	message.Text = event.Content
+	event.Message = message
 	data, err := json.Marshal(event)
 	if err != nil {
 		beego.Error("Fail to marshal event:", err)
@@ -121,7 +133,8 @@ func (this *ChatRoom) Run() {
 			if !this.IsUserExist(sub.Name) {
 				this.subscribers.PushBack(sub) // Add user to the end of list.
 				// Publish a JOIN event.
-				this.publish <- this.NewEvent(models.EVENT_JOIN, sub.Name, "")
+				beego.Info(strconv.Itoa(this.subscribers.Len()))
+				this.publish <- this.NewEvent(models.EVENT_JOIN, sub.Name, strconv.Itoa(this.subscribers.Len()))
 				beego.Info("New user:", sub.Name, ";WebSocket:", sub.Conn != nil)
 			} else {
 				beego.Info("Old user:", sub.Name, ";WebSocket:", sub.Conn != nil)
@@ -144,7 +157,7 @@ func (this *ChatRoom) Run() {
 						ws.Close()
 						beego.Error("WebSocket closed:", unsub)
 					}
-					this.publish <- this.NewEvent(models.EVENT_LEAVE, unsub, "") // Publish a LEAVE event.
+					this.publish <- this.NewEvent(models.EVENT_LEAVE, unsub, strconv.Itoa(this.subscribers.Len())) // Publish a LEAVE event.
 					break
 				}
 			}
@@ -154,10 +167,15 @@ func (this *ChatRoom) Run() {
 					//TODO 怎么区分单发还是群发
 					this.sendOneWebSocket(event)
 					this.NewArchive(event)
-					break
 				}
 			}
+
+		case flag := <-this.interrupt:
+			if flag {
+				break
+			}
 		}
+
 	}
 }
 

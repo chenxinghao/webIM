@@ -19,4 +19,10 @@ type Event struct {
 	User      string
 	Timestamp int // Unix timestamp (secs)
 	Content   string
+	Message   *Message
+}
+
+type Message struct {
+	FromChatRoom string `json:"fromChatRoom"`
+	Text         string `json:"text"`
 }

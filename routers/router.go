@@ -6,6 +6,8 @@ import (
 )
 
 func init() {
+	//TODO 匹配手机端
+
 	// Register routers.
 	beego.Router("/", &controllers.AppController{})
 	// Indicate AppController.Join method to handle POST requests.
