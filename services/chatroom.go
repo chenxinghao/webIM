@@ -61,7 +61,6 @@ func (this *ChatRoom) Create() {
 func (this *ChatRoom) broadcastWebSocket(event models.Event) {
 	message := &models.Message{}
 	message.FromChatRoom = this.Name
-	beego.Info(this.Name)
 	message.Text = event.Content
 	event.Message = message
 	data, err := json.Marshal(event)
@@ -106,10 +105,12 @@ func (this *ChatRoom) sendOneWebSocket(event models.Event) {
 func (this *ChatRoom) GetArchive() *list.List {
 	return this.archive
 }
+func (this *ChatRoom) GetSubscribersLength() int {
+	return this.subscribers.Len()
+}
 
 //有就删除，没有就不删
 func (this *ChatRoom) ExitRoom(user string) {
-	//TODO 有延时 可能会导致依然会接受部分消息
 	this.unsubscribe <- user
 }
 
@@ -127,26 +128,20 @@ func (this *ChatRoom) Send(event models.Event) {
 
 // This function handles all incoming chan messages.
 func (this *ChatRoom) Run() {
+	flag := false
 	for {
 		select {
 		case sub := <-this.subscribe:
 			if !this.IsUserExist(sub.Name) {
 				this.subscribers.PushBack(sub) // Add user to the end of list.
 				// Publish a JOIN event.
-				beego.Info(strconv.Itoa(this.subscribers.Len()))
 				this.publish <- this.NewEvent(models.EVENT_JOIN, sub.Name, strconv.Itoa(this.subscribers.Len()))
-				beego.Info("New user:", sub.Name, ";WebSocket:", sub.Conn != nil)
 			} else {
 				beego.Info("Old user:", sub.Name, ";WebSocket:", sub.Conn != nil)
 			}
 		case event := <-this.publish:
-
 			this.broadcastWebSocket(event)
 			this.NewArchive(event)
-
-			if event.Type == models.EVENT_MESSAGE {
-				beego.Info("Message from", event.User, ";Content:", event.Content)
-			}
 		case unsub := <-this.unsubscribe:
 			for sub := this.subscribers.Front(); sub != nil; sub = sub.Next() {
 				if sub.Value.(models.Subscriber).Name == unsub {
@@ -161,6 +156,7 @@ func (this *ChatRoom) Run() {
 					break
 				}
 			}
+			go MonitorDeleteRun(this.Name)
 		case event := <-this.send:
 			for sub := this.subscribers.Front(); sub != nil; sub = sub.Next() {
 				if sub.Value.(models.Subscriber).Name == event.User {
@@ -169,14 +165,15 @@ func (this *ChatRoom) Run() {
 					this.NewArchive(event)
 				}
 			}
-
-		case flag := <-this.interrupt:
-			if flag {
-				break
-			}
+		case flag = <-this.interrupt:
 		}
-
+		if flag {
+			break
+		}
 	}
+
+	beego.Info(this.Name + " Run End")
+	//TODO  清空所有的chan  返回所有打开错误的内容
 }
 
 func (this *ChatRoom) IsUserExist(user string) bool {
