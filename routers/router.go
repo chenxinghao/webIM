@@ -6,7 +6,6 @@ import (
 )
 
 func init() {
-	//TODO 匹配手机端
 
 	// Register routers.
 	beego.Router("/", &controllers.AppController{})

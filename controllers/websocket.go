@@ -100,7 +100,6 @@ func (this *WebSocketController) Join() {
 	for {
 		_, p, err := ws.ReadMessage()
 		if err != nil {
-			beego.Info("test!!!!err")
 			return
 		}
 		chatRoom.Send(chatRoom.NewEvent(models.EVENT_MESSAGE, uname, string(p)))
