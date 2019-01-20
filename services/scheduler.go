@@ -25,7 +25,6 @@ func (this *Scheduler) CreateChatRoom(name string) *ChatRoom {
 	return room
 }
 
-//TODO 设置默认值
 func (this *Scheduler) FindChatRoom(roomName string) *ChatRoom {
 	if room, ok := this.RoomList[roomName]; ok {
 		return room
@@ -38,17 +37,4 @@ func (this *Scheduler) DeleteChatRoom(roomName string) {
 		room.Interrupt()
 		delete(this.RoomList, roomName)
 	}
-}
-
-//TODO 没用到这个方法
-func (this *Scheduler) ChangeChatRoom(userName, fromRoom, toRoom string) {
-	fRoom := this.FindChatRoom(fromRoom)
-	if fRoom == nil {
-
-	}
-	if fRoom.IsUserExist(userName) {
-		fRoom.ExitRoom(userName)
-	}
-	fRoom.ChangeRoom(userName, toRoom)
-
 }

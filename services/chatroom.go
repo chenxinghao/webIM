@@ -15,8 +15,6 @@ type ChatRoom struct {
 	// 此值还没用上
 	archive *list.List // All the events from the archive.
 
-	//TODO 感觉没用
-	New       <-chan models.Event    // New events coming in.
 	subscribe chan models.Subscriber // Channel for new join users.
 
 	unsubscribe chan string //Channel for exit users.
@@ -30,8 +28,8 @@ type ChatRoom struct {
 	interrupt chan bool
 }
 
-func (this *ChatRoom) NewEvent(ep models.EventType, user, msg string) models.Event {
-	return models.Event{ep, user, int(time.Now().Unix()), msg, nil}
+func (this *ChatRoom) NewEvent(ep models.EventType, user, toUser, msg string) models.Event {
+	return models.Event{ep, user, toUser, int(time.Now().Unix()), msg, nil}
 }
 
 func (this *ChatRoom) Join(user string, ws *websocket.Conn) {
@@ -82,6 +80,10 @@ func (this *ChatRoom) broadcastWebSocket(event models.Event) {
 }
 
 func (this *ChatRoom) sendOneWebSocket(event models.Event) {
+	message := &models.Message{}
+	message.FromChatRoom = this.Name
+	message.Text = event.Content
+	event.Message = message
 	data, err := json.Marshal(event)
 	if err != nil {
 		beego.Error("Fail to marshal event:", err)
@@ -89,7 +91,7 @@ func (this *ChatRoom) sendOneWebSocket(event models.Event) {
 	}
 	//TODO 重复 查找效率低
 	for sub := this.subscribers.Front(); sub != nil; sub = sub.Next() {
-		if sub.Value.(models.Subscriber).Name == event.User {
+		if sub.Value.(models.Subscriber).Name == event.ToUser || sub.Value.(models.Subscriber).Name == event.User {
 			ws := sub.Value.(models.Subscriber).Conn
 			if ws != nil {
 				if ws.WriteMessage(websocket.TextMessage, data) != nil {
@@ -114,16 +116,18 @@ func (this *ChatRoom) ExitRoom(user string) {
 	this.unsubscribe <- user
 }
 
-func (this *ChatRoom) ChangeRoom(user, ChangeName string) {
-	this.send <- this.NewEvent(models.EVENT_CHANGE, user, ChangeName)
-	this.ExitRoom(user)
+//func (this *ChatRoom) ChangeRoom(user, ChangeName string) {
+//	this.send <- this.NewEvent(models.EVENT_CHANGE, user, ChangeName)
+//	this.ExitRoom(user)
+//
+//}
 
+func (this *ChatRoom) Send(event models.Event) {
+	this.publish <- event
 }
 
-//TODO 不合理 单聊 还是群发
-func (this *ChatRoom) Send(event models.Event) {
-	//TODO 有延时 可能会导致依然会接受部分消息
-	this.publish <- event
+func (this *ChatRoom) SendOne(event models.Event) {
+	this.send <- event
 }
 
 // This function handles all incoming chan messages.
@@ -135,7 +139,7 @@ func (this *ChatRoom) Run() {
 			if !this.IsUserExist(sub.Name) {
 				this.subscribers.PushBack(sub) // Add user to the end of list.
 				// Publish a JOIN event.
-				this.publish <- this.NewEvent(models.EVENT_JOIN, sub.Name, strconv.Itoa(this.subscribers.Len()))
+				this.publish <- this.NewEvent(models.EVENT_JOIN, sub.Name, "", strconv.Itoa(this.subscribers.Len()))
 			} else {
 				beego.Info("Old user:", sub.Name, ";WebSocket:", sub.Conn != nil)
 			}
@@ -152,19 +156,13 @@ func (this *ChatRoom) Run() {
 						ws.Close()
 						beego.Error("WebSocket closed:", unsub)
 					}
-					this.publish <- this.NewEvent(models.EVENT_LEAVE, unsub, strconv.Itoa(this.subscribers.Len())) // Publish a LEAVE event.
+					this.publish <- this.NewEvent(models.EVENT_LEAVE, unsub, "", strconv.Itoa(this.subscribers.Len())) // Publish a LEAVE event.
 					break
 				}
 			}
 			go MonitorDeleteRun(this.Name)
 		case event := <-this.send:
-			for sub := this.subscribers.Front(); sub != nil; sub = sub.Next() {
-				if sub.Value.(models.Subscriber).Name == event.User {
-					//TODO 怎么区分单发还是群发
-					this.sendOneWebSocket(event)
-					this.NewArchive(event)
-				}
-			}
+			this.sendOneWebSocket(event)
 		case flag = <-this.interrupt:
 		}
 		if flag {

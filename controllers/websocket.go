@@ -18,6 +18,7 @@ import (
 	"WebIM/models"
 	"encoding/json"
 	"net/http"
+	"strings"
 	"time"
 	"webIM/services"
 
@@ -102,6 +103,24 @@ func (this *WebSocketController) Join() {
 		if err != nil {
 			return
 		}
-		chatRoom.Send(chatRoom.NewEvent(models.EVENT_MESSAGE, uname, string(p)))
+		receivedMessage := &models.ReceivedMessage{}
+		if err := json.Unmarshal(p, receivedMessage); err != nil {
+			beego.Error(uname + ":")
+			beego.Error(err)
+			continue
+		}
+		if strings.HasPrefix(receivedMessage.Content, "cmd##") {
+			content, err := services.Cmd.Exec(strings.Split(receivedMessage.Content, "##")[1])
+			if err != nil {
+				continue
+			}
+			chatRoom.Send(chatRoom.NewEvent(models.EVENT_MESSAGE, uname, "", content))
+
+		} else if receivedMessage.ToName != "" && receivedMessage.ToName != "broadcast" {
+			chatRoom.SendOne(chatRoom.NewEvent(models.EVENT_MESSAGE, uname, receivedMessage.ToName, receivedMessage.Content))
+		} else {
+			chatRoom.Send(chatRoom.NewEvent(models.EVENT_MESSAGE, uname, "", receivedMessage.Content))
+		}
+
 	}
 }

@@ -64,31 +64,51 @@ $(document).ready(function () {
 
     // Send messages.
     var postConecnt = function () {
-        var uname = $('#uname').text();
         var content = $('#sendbox').val();
-        socket.send(content);
+        var json
+        if  (content.substring(0,1)=="@"){
+            alert(content.indexOf(":"))
+            var i=content.indexOf(":")
+            alert(content.substring(1,i))
+            alert(content.substring(i+1))
+            json=GetJsonData(content.substring(1,i),"message",content.substring(i+1))
+        }else {
+            json=GetJsonData("","message",content)
+        }
+        socket.send(JSON.stringify(json));
         $('#sendbox').val('');
     }
 
 
-    function  ChangeRoom(url,json){
-        $.ajax({
-            type: 'POST',
-            url: url,
-            contentType: "application/json; charset=utf-8",
-            data: JSON.stringify(json),
-            dataType: "json",
-            success: function (message) {
-                if (message > 0) {
-                    alert("请求已提交！我们会尽快与您取得联系");
-                }
-            },
-            error: function (message) {
-                alert("提交数据失败！");
-            }
 
-        });
+    function GetJsonData(toname,type,content) {
+        var json = {
+            "fromName": $('#uname').text(),
+            "toName": toname,
+            "type":type,
+            "content": content
+        };
+        return json;
     }
+
+    // function  ChangeRoom(url,json){
+    //     $.ajax({
+    //         type: 'POST',
+    //         url: url,
+    //         contentType: "application/json; charset=utf-8",
+    //         data: JSON.stringify(json),
+    //         dataType: "json",
+    //         success: function (message) {
+    //             if (message > 0) {
+    //                 alert("请求已提交！我们会尽快与您取得联系");
+    //             }
+    //         },
+    //         error: function (message) {
+    //             alert("提交数据失败！");
+    //         }
+    //
+    //     });
+    // }
     $('#sendbtn').click(function () {
         postConecnt();
     });
@@ -101,14 +121,6 @@ $(document).ready(function () {
     $('#change_room').click(function () {
         ChangeRoomName();
         var path =GetUrlPath();
-        // var  json ={
-        //     "name": $('#uname').text(),
-        //     "leftRoom": $('#room_name').text(),
-        //     "joinRoomName": "NEW",
-        //     "time": 11111111
-        // };
-        // alert(path)
-        // ChangeRoom(path,json)
         alert($('#room_name').text());
         alert(path);
         window.location.href=path;

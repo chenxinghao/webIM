@@ -17,14 +17,13 @@ func (this *MonitorDelete) monitorDeleteStatus(roomName string) bool {
 	if chatRoom.GetSubscribersLength() != 0 {
 		return false
 	}
-	//TODO 增加无消息超时
 	return true
 }
 
-func (this *MonitorDelete) deleteCounter(roomName string, countNumber int) {
+func (this *MonitorDelete) deleteCounter(countNumber int) {
 
 	for i := 0; i < countNumber; i++ {
-		if !this.monitorDeleteStatus(roomName) {
+		if !this.monitorDeleteStatus(this.RoomName) {
 			this.finishFlag = 0 //没有结束
 			return
 		}
@@ -50,8 +49,7 @@ func MonitorDeleteRun(roomName string) {
 	monitorDelete := MonitorDelete{finishFlag: 0, RoomName: roomName}
 	SchedulerService.ClearList[roomName] = &monitorDelete
 
-	//TODO 直接调用RoomName 不用传值
-	monitorDelete.deleteCounter(monitorDelete.RoomName, 120)
+	monitorDelete.deleteCounter(120)
 	if monitorDelete.finishFlag == 1 {
 		chatRoom := SchedulerService.FindChatRoom(monitorDelete.RoomName)
 		SchedulerService.DeleteChatRoom(monitorDelete.RoomName)

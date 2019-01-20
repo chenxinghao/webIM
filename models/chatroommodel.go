@@ -17,6 +17,7 @@ type Subscriber struct {
 type Event struct {
 	Type      EventType // JOIN, LEAVE, MESSAGE
 	User      string
+	ToUser    string
 	Timestamp int // Unix timestamp (secs)
 	Content   string
 	Message   *Message
@@ -25,4 +26,11 @@ type Event struct {
 type Message struct {
 	FromChatRoom string `json:"fromChatRoom"`
 	Text         string `json:"text"`
+}
+
+type ReceivedMessage struct {
+	FromName string `json:"fromName"`
+	ToName   string `json:"toName"`
+	Type     string `json:"type"`
+	Content  string `json:"content"`
 }
